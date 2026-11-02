@@ -1,0 +1,1673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Spider-Man 3D Merge Sort</title>
+  
+  <!-- External Tailwind & FontAwesome CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- High Legibility Bold Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700;800&family=Outfit:wght@600;700;800;900&display=swap" rel="stylesheet">
+  
+  <!-- Three.js + OrbitControls -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    body, html {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #030712;
+      font-family: 'Outfit', sans-serif;
+      color: #f3f4f6;
+    }
+
+    #webgl-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      z-index: 1;
+    }
+
+    .spidey-glass {
+      background: rgba(10, 15, 30, 0.78);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.45);
+    }
+
+    .code-active {
+      background: rgba(239, 68, 68, 0.35) !important;
+      border-left: 3px solid #ef4444 !important;
+      color: #ffffff !important;
+      font-weight: 700 !important;
+      padding-left: 6px !important;
+    }
+
+    .spidey-btn {
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+    }
+    .spidey-btn:active {
+      transform: scale(0.96);
+    }
+
+    /* Custom range slider thumb */
+    input[type=range] {
+      -webkit-appearance: none;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 9999px;
+      height: 6px;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      height: 16px;
+      width: 16px;
+      border-radius: 50%;
+      background: #ef4444;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(239, 68, 68, 0.8);
+      border: 2px solid #ffffff;
+    }
+
+    /* Custom scrollbar for code snippet */
+    ::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(0,0,0,0.2);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(239, 68, 68, 0.5);
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body class="w-full h-full relative select-none">
+
+  <!-- 3D Canvas -->
+  <canvas id="webgl-canvas"></canvas>
+
+  <!-- Main HUD Layer -->
+  <div class="relative z-10 w-full h-full pointer-events-none flex flex-col justify-between p-2 sm:p-4 md:p-6">
+    
+    <!-- Top Bar: Title & Telemetry & Actions -->
+    <header class="w-full flex flex-wrap items-center justify-between gap-2 pointer-events-auto">
+      
+      <!-- Brand & Status -->
+      <div class="spidey-glass rounded-xl px-3 py-2 sm:px-4 sm:py-2.5 flex items-center gap-3 border border-red-500/30">
+        <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-gradient-to-tr from-red-600 to-rose-500 flex items-center justify-center shadow-lg shadow-red-600/40 border border-white/20">
+          <i class="fa-solid fa-spider text-white text-lg sm:text-xl"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-sm sm:text-base font-black tracking-wider text-white uppercase flex items-center gap-1.5">
+              <span>Spider-Sort</span>
+              <span class="text-xs font-mono font-normal px-1.5 py-0.5 rounded bg-red-600/30 text-red-400 border border-red-500/40">3D O(N log N)</span>
+            </h1>
+          </div>
+          <div class="flex items-center gap-3 text-[10px] sm:text-xs text-gray-400 font-mono mt-0.5">
+            <span class="flex items-center gap-1">
+              <span id="stat-indicator" class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span id="stat-status" class="text-gray-300">Ready</span>
+            </span>
+            <span class="text-gray-500">•</span>
+            <span>Comparisons: <strong id="stat-comparisons" class="text-amber-400 font-bold">0</strong></span>
+            <span class="text-gray-500">•</span>
+            <span>Swaps: <strong id="stat-moves" class="text-sky-400 font-bold">0</strong></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Suit Switcher & Quick Tool Buttons -->
+      <div class="flex items-center gap-2">
+        
+        <!-- Suit Switcher -->
+        <div class="spidey-glass rounded-xl px-2.5 py-1.5 flex items-center gap-2 border border-blue-500/30">
+          <label class="text-[10px] sm:text-xs uppercase font-mono text-blue-400 font-bold hidden sm:inline"><i class="fa-solid fa-shirt mr-1"></i>Suit:</label>
+          <select id="suit-selector" class="bg-gray-900/90 text-white text-[11px] sm:text-xs rounded-lg px-2 py-1 outline-none border border-white/10 cursor-pointer font-bold">
+            <option value="nano">Integrated Nano-Armor</option>
+            <option value="classic">Classic Comic Red/Blue</option>
+            <option value="miles">Miles Morales Stealth</option>
+          </select>
+        </div>
+
+        <!-- Custom Array Input Button -->
+        <button id="btn-custom-array" class="spidey-btn spidey-glass px-3 py-2 rounded-xl text-xs sm:text-sm font-bold text-gray-200 hover:text-white hover:border-red-500/50 flex items-center gap-1.5">
+          <i class="fa-solid fa-sliders text-red-400"></i>
+          <span class="hidden md:inline">Custom Array</span>
+        </button>
+
+        <!-- Toggle Code Tracer Button -->
+        <button id="btn-toggle-code" class="spidey-btn spidey-glass px-3 py-2 rounded-xl text-xs sm:text-sm font-bold text-gray-200 hover:text-white hover:border-emerald-500/50 flex items-center gap-1.5">
+          <i class="fa-solid fa-code text-emerald-400"></i>
+          <span class="hidden md:inline">Code Tracer</span>
+        </button>
+
+        <!-- Audio Mute/Unmute -->
+        <button id="btn-toggle-audio" class="spidey-btn spidey-glass w-9 h-9 rounded-xl flex items-center justify-center text-gray-200 hover:text-white hover:border-amber-500/50 text-xs sm:text-sm">
+          <i id="audio-icon" class="fa-solid fa-volume-high text-amber-400"></i>
+        </button>
+
+        <!-- Reset Camera -->
+        <button id="btn-reset-cam" title="Reset View" class="spidey-btn spidey-glass w-9 h-9 rounded-xl flex items-center justify-center text-gray-200 hover:text-white hover:border-sky-500/50 text-xs sm:text-sm">
+          <i class="fa-solid fa-video text-sky-400"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- Top-Right Floating Code Tracer Card (Anchored firmly in the corner) -->
+    <aside id="code-panel" class="fixed top-16 right-3 sm:top-20 sm:right-5 z-20 pointer-events-auto spidey-glass rounded-xl p-2.5 sm:p-3 w-[240px] sm:w-[270px] text-[10px] sm:text-[11px] font-mono border border-gray-700/70 shadow-2xl transition-all duration-300">
+      <div class="flex items-center justify-between pb-1.5 mb-1.5 border-b border-gray-700/60">
+        <span class="text-gray-200 font-bold flex items-center gap-1.5 truncate">
+          <i class="fa-solid fa-terminal text-red-400 text-xs"></i>
+          <span>mergeSort(arr, l, r)</span>
+        </span>
+        <span id="code-status-badge" class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-gray-800 text-gray-300 border border-gray-600">IDLE</span>
+      </div>
+      <div id="code-lines" class="space-y-0.5 text-gray-400 leading-tight">
+        <div id="code-line-1" class="px-1 py-0.5 rounded transition-all">if (l &gt;= r) return;</div>
+        <div id="code-line-2" class="px-1 py-0.5 rounded transition-all">mid = l + (r - l) / 2;</div>
+        <div id="code-line-3" class="px-1 py-0.5 rounded transition-all">mergeSort(arr, l, mid);</div>
+        <div id="code-line-4" class="px-1 py-0.5 rounded transition-all">mergeSort(arr, mid + 1, r);</div>
+        <div id="code-line-5" class="px-1 py-0.5 rounded transition-all font-bold text-sky-300">// Web-Shoot in-line merge</div>
+        <div id="code-line-6" class="px-1 py-0.5 rounded transition-all">compare(arr[i], arr[j]);</div>
+        <div id="code-line-7" class="px-1 py-0.5 rounded transition-all">thwipSwapAndSlide(arr, j, i);</div>
+        <div id="code-line-8" class="px-1 py-0.5 rounded transition-all">return sortedSubarray;</div>
+      </div>
+    </aside>
+
+    <!-- Bottom Dock: Spider-Man Dialogue + Playback Controls -->
+    <footer class="w-full flex flex-col items-center gap-2 pointer-events-auto">
+      
+      <!-- Spider-Man Live Dialogue Ribbon (Docked Cleanly at Bottom) -->
+      <div class="w-full max-w-xl spidey-glass rounded-xl px-3 py-2 flex items-center gap-2.5 border border-red-500/40 shadow-xl">
+        <div class="w-6 h-6 rounded-full bg-red-600/90 flex-shrink-0 flex items-center justify-center text-white text-xs border border-white/30">
+          <i class="fa-solid fa-mask"></i>
+        </div>
+        <div class="flex-1 overflow-hidden">
+          <span class="text-[10px] font-mono text-red-400 font-bold uppercase tracking-wider block">Spidey Sense:</span>
+          <p id="spidey-dialogue" class="text-xs sm:text-sm font-semibold text-gray-100 truncate">
+            "Target array locked in! Hit 'Sort' or 'Step' and watch my webs organize the chaos!"
+          </p>
+        </div>
+      </div>
+
+      <!-- Playback Control Center -->
+      <div class="spidey-glass rounded-2xl p-2.5 sm:p-3 w-full max-w-3xl flex flex-wrap items-center justify-between gap-3 border border-gray-700/60 shadow-2xl">
+        
+        <!-- Action Buttons -->
+        <div class="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+          <button id="btn-sort" class="spidey-btn px-4 py-2 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-extrabold text-xs sm:text-sm flex items-center gap-1.5 border border-red-400/30">
+            <i class="fa-solid fa-play"></i>
+            <span>SORT</span>
+          </button>
+          
+          <button id="btn-pause" class="spidey-btn px-3 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-200 font-bold text-xs sm:text-sm flex items-center gap-1 border border-gray-600/50" disabled>
+            <i class="fa-solid fa-pause"></i>
+            <span>Pause</span>
+          </button>
+
+          <button id="btn-step" class="spidey-btn px-3 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-200 font-bold text-xs sm:text-sm flex items-center gap-1 border border-gray-600/50">
+            <i class="fa-solid fa-forward-step"></i>
+            <span>Step</span>
+          </button>
+
+          <button id="btn-reset" class="spidey-btn px-3 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-200 font-bold text-xs sm:text-sm flex items-center gap-1 border border-gray-600/50">
+            <i class="fa-solid fa-rotate-left"></i>
+            <span>Reset</span>
+          </button>
+
+          <button id="btn-shuffle" class="spidey-btn px-3 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-200 font-bold text-xs sm:text-sm flex items-center gap-1 border border-gray-600/50">
+            <i class="fa-solid fa-shuffle"></i>
+            <span>Shuffle</span>
+          </button>
+        </div>
+
+        <!-- Sliders: Array Size & Animation Speed -->
+        <div class="flex items-center gap-4 sm:gap-6 flex-grow justify-end">
+          
+          <!-- Size Slider -->
+          <div class="flex items-center gap-2">
+            <label class="text-[11px] font-mono uppercase text-gray-400 font-bold">Size: <span id="size-val" class="text-white font-mono">10</span></label>
+            <input id="slider-size" type="range" min="6" max="18" value="10" class="w-16 sm:w-24 accent-red-500">
+          </div>
+
+          <!-- Speed Slider -->
+          <div class="flex items-center gap-2">
+            <label class="text-[11px] font-mono uppercase text-gray-400 font-bold">Speed: <span id="speed-val" class="text-white font-mono">1x</span></label>
+            <input id="slider-speed" type="range" min="1" max="5" value="2" class="w-16 sm:w-24 accent-red-500">
+          </div>
+
+        </div>
+
+      </div>
+
+    </footer>
+
+  </div>
+
+  <!-- Custom Array Input Modal -->
+  <div id="custom-modal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex items-center justify-center p-4 hidden">
+    <div class="spidey-glass rounded-2xl max-w-md w-full p-5 border border-red-500/40 shadow-2xl pointer-events-auto">
+      <div class="flex items-center justify-between pb-3 border-b border-gray-700">
+        <h3 class="text-base font-black text-white uppercase flex items-center gap-2">
+          <i class="fa-solid fa-sliders text-red-500"></i>
+          <span>Custom Array Input</span>
+        </h3>
+        <button id="btn-close-modal" class="text-gray-400 hover:text-white text-lg">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="mt-4 space-y-3">
+        <p class="text-xs text-gray-300">Enter between 4 and 18 numbers separated by commas (values 5 to 99):</p>
+        <input id="custom-input-field" type="text" placeholder="e.g. 42, 18, 95, 7, 63, 31, 84, 52" 
+               class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white font-mono focus:border-red-500 outline-none">
+        
+        <!-- Preset Buttons -->
+        <div class="pt-2">
+          <span class="text-[10px] uppercase font-mono text-gray-400 block mb-1.5 font-bold">Quick Presets:</span>
+          <div class="flex flex-wrap gap-1.5 text-xs">
+            <button class="preset-btn px-2.5 py-1 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700" data-vals="90,80,70,60,50,40,30,20">Reversed (Worst)</button>
+            <button class="preset-btn px-2.5 py-1 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700" data-vals="12,18,25,32,45,58,80,95">Nearly Sorted</button>
+            <button class="preset-btn px-2.5 py-1 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700" data-vals="45,45,20,80,20,80,95,95">Duplicates</button>
+            <button class="preset-btn px-2.5 py-1 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700" data-vals="64,34,25,12,22,11,90,75,44,18">Random 10</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-5 flex justify-end gap-2 pt-3 border-t border-gray-800">
+        <button id="btn-cancel-modal" class="px-3 py-1.5 rounded-xl text-xs font-bold text-gray-400 hover:text-white">Cancel</button>
+        <button id="btn-apply-modal" class="px-4 py-1.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-extrabold text-xs shadow-lg shadow-red-600/40">Apply Array</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* Audio Synthesizer (Zero External Audio Files - 100% Web Audio API) */
+    class SpideyAudioSystem {
+      constructor() {
+        this.ctx = null;
+        this.enabled = true;
+      }
+
+      init() {
+        if (!this.ctx) {
+          try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            this.ctx = new AudioContext();
+          } catch (e) {
+            console.warn("Web Audio not supported", e);
+          }
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+
+      thwip() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+
+        try {
+          const now = this.ctx.currentTime;
+          // White noise burst for web release
+          const bufferSize = this.ctx.sampleRate * 0.12;
+          const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+          const data = buffer.getChannelData(0);
+          for (let i = 0; i < bufferSize; i++) {
+            data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.3));
+          }
+
+          const noise = this.ctx.createBufferSource();
+          noise.buffer = buffer;
+
+          const filter = this.ctx.createBiquadFilter();
+          filter.type = 'bandpass';
+          filter.frequency.setValueAtTime(3200, now);
+          filter.frequency.exponentialRampToValueAtTime(800, now + 0.12);
+          filter.Q.setValueAtTime(3.5, now);
+
+          const gain = this.ctx.createGain();
+          gain.gain.setValueAtTime(0.35, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+
+          noise.connect(filter);
+          filter.connect(gain);
+          gain.connect(this.ctx.destination);
+
+          noise.start(now);
+        } catch (e) {}
+      }
+
+      comparePing(valA = 50, valB = 50) {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+
+        try {
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+
+          osc.type = 'sine';
+          const baseFreq = 300 + Math.min(valA, valB) * 5;
+          osc.frequency.setValueAtTime(baseFreq, now);
+          osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.5, now + 0.08);
+
+          gain.gain.setValueAtTime(0.12, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+
+          osc.start(now);
+          osc.stop(now + 0.1);
+        } catch (e) {}
+      }
+
+      webPull() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+
+        try {
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(150, now);
+          osc.frequency.exponentialRampToValueAtTime(450, now + 0.22);
+
+          gain.gain.setValueAtTime(0.2, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+
+          osc.start(now);
+          osc.stop(now + 0.22);
+        } catch (e) {}
+      }
+
+      victory() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+
+        try {
+          const notes = [523.25, 659.25, 783.99, 1046.50];
+          notes.forEach((freq, idx) => {
+            const now = this.ctx.currentTime + idx * 0.1;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, now);
+            gain.gain.setValueAtTime(0.18, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.35);
+          });
+        } catch (e) {}
+      }
+    }
+
+    const audio = new SpideyAudioSystem();
+
+    let scene, camera, renderer, controls;
+    let canvas = document.getElementById('webgl-canvas');
+
+    // Scene Collections
+    let arrayPillars = [];
+    let currentArray = [42, 18, 85, 29, 64, 12, 73, 50, 37, 91];
+    let sortSteps = [];
+    let currentStepIndex = 0;
+    let isSorting = false;
+    let sortSpeedMs = 500;
+    let animationTimer = null;
+    let totalComparisons = 0;
+    let totalMoves = 0;
+
+    // Active dynamic visual components
+    let spiderman = null;
+    let activeWebMeshes = [];
+    let activeFXObjects = [];
+    let backgroundParticles = null;
+
+    // Constants
+    const SORT_LINE_Z = 0;
+    const SPIDEY_POS = new THREE.Vector3(0, 5.2, -6.5);
+
+    function initScene() {
+      // 1. Scene & Depth Fog
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x030712);
+      scene.fog = new THREE.FogExp2(0x030712, 0.015);
+
+      // 2. Camera Setup (Front Steady View)
+      camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+      camera.position.set(0, 9.5, 26);
+      camera.lookAt(0, 2.5, 0);
+
+      // 3. Renderer
+      renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: false });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+      // 4. OrbitControls (Secondary, for free explore)
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+      controls.maxPolarAngle = Math.PI / 2 + 0.05;
+      controls.minDistance = 8;
+      controls.maxDistance = 60;
+      controls.target.set(0, 2.5, 0);
+
+      // 5. Lighting
+      setupLighting();
+
+      // 6. Rooftop Arena & Infinite Cyber Environment
+      setupEnvironment();
+
+      // 7. Procedural Spider-Man Hero Model
+      createSpiderManCharacter('nano');
+
+      // 8. Generate Pillars
+      resetArrayElements();
+
+      // Window resize listener
+      window.addEventListener('resize', onWindowResize);
+
+      // Start animation loop
+      requestAnimationFrame(animateLoop);
+    }
+
+    function setupLighting() {
+      const ambientLight = new THREE.AmbientLight(0x1e293b, 1.2);
+      scene.add(ambientLight);
+
+      // Hero Spotlight on Spidey
+      const spideySpot = new THREE.SpotLight(0xef4444, 2.5, 35, Math.PI / 3.5, 0.4, 1.2);
+      spideySpot.position.set(0, 16, -2);
+      spideySpot.target.position.set(0, 5, -6.5);
+      scene.add(spideySpot);
+      scene.add(spideySpot.target);
+
+      // Front Arena Key Light
+      const keyLight = new THREE.DirectionalLight(0xe0f2fe, 1.8);
+      keyLight.position.set(10, 22, 18);
+      keyLight.castShadow = true;
+      keyLight.shadow.mapSize.width = 1024;
+      keyLight.shadow.mapSize.height = 1024;
+      keyLight.shadow.camera.near = 0.5;
+      keyLight.shadow.camera.far = 50;
+      const d = 16;
+      keyLight.shadow.camera.left = -d;
+      keyLight.shadow.camera.right = d;
+      keyLight.shadow.camera.top = d;
+      keyLight.shadow.camera.bottom = -d;
+      scene.add(keyLight);
+
+      // Rim Fill Light (Deep Cyan)
+      const rimLight = new THREE.DirectionalLight(0x06b6d4, 1.1);
+      rimLight.position.set(-14, 12, -10);
+      scene.add(rimLight);
+    }
+
+    function setupEnvironment() {
+      // 1. Sleek Rooftop Platform (Dark Metallic Slate with Edge Glow)
+      const platformGeo = new THREE.BoxGeometry(38, 1.2, 22);
+      const platformMat = new THREE.MeshStandardMaterial({
+        color: 0x0f172a,
+        metalness: 0.8,
+        roughness: 0.25
+      });
+      const platform = new THREE.Mesh(platformGeo, platformMat);
+      platform.position.set(0, -0.6, -1);
+      platform.receiveShadow = true;
+      scene.add(platform);
+
+      // Glowing Cyan Edge Rails
+      const railGeo = new THREE.BoxGeometry(38.2, 0.08, 0.35);
+      const railMat = new THREE.MeshBasicMaterial({ color: 0x06b6d4 });
+      const frontRail = new THREE.Mesh(railGeo, railMat);
+      frontRail.position.set(0, 0.04, 9.8);
+      scene.add(frontRail);
+
+      const backRail = frontRail.clone();
+      backRail.material = new THREE.MeshBasicMaterial({ color: 0xef4444 });
+      backRail.position.set(0, 0.04, -11.8);
+      scene.add(backRail);
+
+      // Sorting Baseline Track Ribbon
+      const trackGeo = new THREE.PlaneGeometry(36, 0.4);
+      const trackMat = new THREE.MeshBasicMaterial({
+        color: 0x38bdf8,
+        transparent: true,
+        opacity: 0.35,
+        side: THREE.DoubleSide
+      });
+      const track = new THREE.Mesh(trackGeo, trackMat);
+      track.rotation.x = Math.PI / 2;
+      track.position.set(0, 0.02, SORT_LINE_Z);
+      scene.add(track);
+
+      // 2. Spider-Man Perch Pedestal
+      const perchGeo = new THREE.CylinderGeometry(2.4, 2.8, 5, 24);
+      const perchMat = new THREE.MeshStandardMaterial({
+        color: 0x1e293b,
+        metalness: 0.6,
+        roughness: 0.4
+      });
+      const perch = new THREE.Mesh(perchGeo, perchMat);
+      perch.position.set(0, 2.5, -6.5);
+      perch.receiveShadow = true;
+      perch.castShadow = true;
+      scene.add(perch);
+
+      const perchRingGeo = new THREE.RingGeometry(2.2, 2.45, 32);
+      const perchRingMat = new THREE.MeshBasicMaterial({ color: 0xef4444, side: THREE.DoubleSide });
+      const perchRing = new THREE.Mesh(perchRingGeo, perchRingMat);
+      perchRing.rotation.x = Math.PI / 2;
+      perchRing.position.set(0, 5.02, -6.5);
+      scene.add(perchRing);
+
+      // 3. Infinite Floating Stardust Particles
+      const particleCount = 450;
+      const particleGeo = new THREE.BufferGeometry();
+      const posArray = new Float32Array(particleCount * 3);
+
+      for (let i = 0; i < particleCount * 3; i += 3) {
+        posArray[i] = (Math.random() - 0.5) * 80;
+        posArray[i + 1] = Math.random() * 35;
+        posArray[i + 2] = (Math.random() - 0.5) * 60;
+      }
+      particleGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+
+      const particleMat = new THREE.PointsMaterial({
+        size: 0.18,
+        color: 0x93c5fd,
+        transparent: true,
+        opacity: 0.75,
+        blending: THREE.AdditiveBlending
+      });
+      backgroundParticles = new THREE.Points(particleGeo, particleMat);
+      scene.add(backgroundParticles);
+    }
+
+    function createSpiderManCharacter(suitType = 'nano') {
+      if (spiderman) {
+        scene.remove(spiderman);
+      }
+
+      const spideyGroup = new THREE.Group();
+
+      // Suit Color Palettes
+      let primaryColor = 0xb91c1c; // Crimson Red
+      let secondaryColor = 0x1e3a8a; // Midnight Blue
+      let accentColor = 0xf59e0b; // Gold Trim
+      let lensColor = 0xffffff;
+
+      if (suitType === 'classic') {
+        primaryColor = 0xdc2626;
+        secondaryColor = 0x2563eb;
+        accentColor = 0x111827;
+      } else if (suitType === 'miles') {
+        primaryColor = 0x111827; // Carbon Black
+        secondaryColor = 0x1f2937;
+        accentColor = 0xef4444; // Electric Red
+      }
+
+      const redMat = new THREE.MeshStandardMaterial({
+        color: primaryColor,
+        roughness: 0.35,
+        metalness: suitType === 'nano' ? 0.6 : 0.15
+      });
+
+      const blueMat = new THREE.MeshStandardMaterial({
+        color: secondaryColor,
+        roughness: 0.4,
+        metalness: suitType === 'nano' ? 0.5 : 0.1
+      });
+
+      const goldMat = new THREE.MeshStandardMaterial({
+        color: accentColor,
+        metalness: 0.8,
+        roughness: 0.2
+      });
+
+      // 1. Pelvis & Torso (Athletic V-Taper)
+      const pelvis = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.4, 0.6, 12), blueMat);
+      pelvis.position.y = 0.6;
+      spideyGroup.add(pelvis);
+
+      const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.78, 0.52, 1.1, 14), redMat);
+      torso.position.y = 1.4;
+      torso.castShadow = true;
+      spideyGroup.add(torso);
+
+      // Chest Emblem Spider
+      const emblemGeo = new THREE.CircleGeometry(0.18, 8);
+      const emblemMat = new THREE.MeshBasicMaterial({ color: accentColor, side: THREE.DoubleSide });
+      const emblem = new THREE.Mesh(emblemGeo, emblemMat);
+      emblem.position.set(0, 1.55, 0.72);
+      spideyGroup.add(emblem);
+
+      // 2. Sculpted Cranium & Head
+      const headGroup = new THREE.Group();
+      headGroup.position.set(0, 2.2, 0.1);
+
+      const headMesh = new THREE.Mesh(new THREE.SphereGeometry(0.48, 16, 16), redMat);
+      headMesh.scale.set(0.9, 1.08, 0.95);
+      headMesh.castShadow = true;
+      headGroup.add(headMesh);
+
+      // Signature Mask Lenses (Angled White Convex Eyes)
+      const eyeGeo = new THREE.ConeGeometry(0.18, 0.38, 4);
+      eyeGeo.rotateZ(Math.PI / 2);
+      const lensMat = new THREE.MeshStandardMaterial({
+        color: lensColor,
+        emissive: 0xffffff,
+        emissiveIntensity: 0.6,
+        roughness: 0.1
+      });
+
+      const leftEye = new THREE.Mesh(eyeGeo, lensMat);
+      leftEye.position.set(-0.2, 0.05, 0.42);
+      leftEye.rotation.set(0.15, 0.35, -0.45);
+      leftEye.scale.set(0.4, 0.9, 0.2);
+      headGroup.add(leftEye);
+
+      const rightEye = new THREE.Mesh(eyeGeo, lensMat);
+      rightEye.position.set(0.2, 0.05, 0.42);
+      rightEye.rotation.set(0.15, -0.35, 0.45);
+      rightEye.scale.set(0.4, 0.9, 0.2);
+      headGroup.add(rightEye);
+
+      spideyGroup.add(headGroup);
+
+      // 3. Articulated Arms & Silver Web Shooters
+      const armMat = redMat;
+
+      // Left Arm
+      const leftArmGroup = new THREE.Group();
+      leftArmGroup.position.set(-0.85, 1.75, 0);
+
+      const leftShoulder = new THREE.Mesh(new THREE.SphereGeometry(0.24, 12, 12), goldMat);
+      leftArmGroup.add(leftShoulder);
+
+      const leftBicep = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.15, 0.7, 10), armMat);
+      leftBicep.position.set(-0.2, -0.35, 0);
+      leftBicep.rotation.z = 0.3;
+      leftArmGroup.add(leftBicep);
+
+      const leftForearm = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.12, 0.7, 10), armMat);
+      leftForearm.position.set(-0.4, -0.85, 0.3);
+      leftForearm.rotation.x = -0.6;
+      leftArmGroup.add(leftForearm);
+
+      // Wrist Shooter Spout
+      const shooterGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.15, 8);
+      const shooterMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.9, roughness: 0.2 });
+      const leftShooter = new THREE.Mesh(shooterGeo, shooterMat);
+      leftShooter.position.set(-0.4, -1.15, 0.5);
+      leftShooter.rotation.x = Math.PI / 2;
+      leftArmGroup.add(leftShooter);
+
+      spideyGroup.add(leftArmGroup);
+
+      // Right Arm
+      const rightArmGroup = new THREE.Group();
+      rightArmGroup.position.set(0.85, 1.75, 0);
+
+      const rightShoulder = new THREE.Mesh(new THREE.SphereGeometry(0.24, 12, 12), goldMat);
+      rightArmGroup.add(rightShoulder);
+
+      const rightBicep = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.15, 0.7, 10), armMat);
+      rightBicep.position.set(0.2, -0.35, 0);
+      rightBicep.rotation.z = -0.3;
+      rightArmGroup.add(rightBicep);
+
+      const rightForearm = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.12, 0.7, 10), armMat);
+      rightForearm.position.set(0.4, -0.85, 0.3);
+      rightForearm.rotation.x = -0.6;
+      rightArmGroup.add(rightForearm);
+
+      const rightShooter = new THREE.Mesh(shooterGeo, shooterMat);
+      rightShooter.position.set(0.4, -1.15, 0.5);
+      rightShooter.rotation.x = Math.PI / 2;
+      rightArmGroup.add(rightShooter);
+
+      spideyGroup.add(rightArmGroup);
+
+      // 4. Crouched Superhero Legs
+      const legMat = blueMat;
+
+      // Left Leg (Crouched)
+      const leftThigh = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.2, 0.8, 10), legMat);
+      leftThigh.position.set(-0.55, 0.45, 0.25);
+      leftThigh.rotation.set(-0.7, 0, 0.5);
+      spideyGroup.add(leftThigh);
+
+      const leftCalf = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.16, 0.8, 10), redMat);
+      leftCalf.position.set(-0.75, 0.1, -0.15);
+      leftCalf.rotation.set(1.1, 0, 0.2);
+      spideyGroup.add(leftCalf);
+
+      // Right Leg (Crouched)
+      const rightThigh = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.2, 0.8, 10), legMat);
+      rightThigh.position.set(0.55, 0.45, 0.25);
+      rightThigh.rotation.set(-0.7, 0, -0.5);
+      spideyGroup.add(rightThigh);
+
+      const rightCalf = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.16, 0.8, 10), redMat);
+      rightCalf.position.set(0.75, 0.1, -0.15);
+      rightCalf.rotation.set(1.1, 0, -0.2);
+      spideyGroup.add(rightCalf);
+
+      // Position Spidey on Rooftop Perch
+      spideyGroup.position.copy(SPIDEY_POS);
+      spideyGroup.scale.set(1.15, 1.15, 1.15);
+      scene.add(spideyGroup);
+
+      // Wire internal references
+      spiderman = spideyGroup;
+      spiderman.head = headGroup;
+      spiderman.leftArm = leftArmGroup;
+      spiderman.rightArm = rightArmGroup;
+      spiderman.leftShooter = leftShooter;
+      spiderman.rightShooter = rightShooter;
+    }
+
+    function resetArrayElements() {
+      // 1. Clean existing pillars
+      arrayPillars.forEach(p => {
+        if (p.mesh) scene.remove(p.mesh);
+      });
+      arrayPillars = [];
+      clearWebLines();
+
+      const count = currentArray.length;
+      
+      // Calculate responsive layout width & spacing
+      const screenW = window.innerWidth;
+      const usableStageWidth = Math.min(30, Math.max(16, (screenW < 768 ? 20 : 28)));
+      const spacing = usableStageWidth / count;
+      const pillarWidth = Math.max(0.65, Math.min(1.4, spacing * 0.72));
+      const pillarDepth = Math.max(0.6, pillarWidth * 0.85);
+      const startX = -((count - 1) * spacing) / 2;
+
+      const minVal = Math.min(...currentArray);
+      const maxVal = Math.max(...currentArray);
+      const valRange = Math.max(1, maxVal - minVal);
+
+      for (let i = 0; i < count; i++) {
+        const val = currentArray[i];
+        const normalized = (val - minVal) / valRange;
+        const height = 1.1 + normalized * 3.8;
+
+        const posX = startX + i * spacing;
+        const pillarMesh = createPillarGroup(val, height, pillarWidth, pillarDepth, normalized);
+        pillarMesh.position.set(posX, 0, SORT_LINE_Z);
+        scene.add(pillarMesh);
+
+        arrayPillars.push({
+          mesh: pillarMesh,
+          value: val,
+          currentIndex: i,
+          targetX: posX,
+          baseHeight: height,
+          width: pillarWidth,
+          normalized: normalized
+        });
+      }
+
+      adjustCameraFraming(count);
+      compileMergeSortSteps();
+      updateTelemetryUI();
+    }
+
+    function getPillarColorByNorm(norm) {
+      // Gradient: Cyan (0x06b6d4) -> Royal Blue (0x3b82f6) -> Hot Red (0xef4444)
+      const color = new THREE.Color();
+      if (norm < 0.5) {
+        color.set(0x06b6d4).lerp(new THREE.Color(0x3b82f6), norm / 0.5);
+      } else {
+        color.set(0x3b82f6).lerp(new THREE.Color(0xef4444), (norm - 0.5) / 0.5);
+      }
+      return color.getHex();
+    }
+
+    function createPillarGroup(value, height, width, depth, normalizedVal = 0.5) {
+      const group = new THREE.Group();
+      const themeColor = getPillarColorByNorm(normalizedVal);
+
+      // 1. Sleek Titanium Pedestal Base Plinth
+      const baseH = 0.22;
+      const baseGeo = new THREE.BoxGeometry(width * 1.15, baseH, depth * 1.15);
+      baseGeo.translate(0, baseH / 2, 0);
+      const baseMat = new THREE.MeshStandardMaterial({
+        color: 0x1e293b,
+        metalness: 0.88,
+        roughness: 0.22
+      });
+      const pedestal = new THREE.Mesh(baseGeo, baseMat);
+      pedestal.castShadow = true;
+      pedestal.receiveShadow = true;
+      group.add(pedestal);
+
+      // 2. Translucent Holographic Outer Shield (Glass Physical Material)
+      const outerGeo = new THREE.BoxGeometry(width, height, depth);
+      outerGeo.translate(0, height / 2 + baseH, 0);
+
+      const outerMat = new THREE.MeshPhysicalMaterial({
+        color: themeColor,
+        metalness: 0.15,
+        roughness: 0.12,
+        transmission: 0.72,
+        thickness: 0.65,
+        transparent: true,
+        opacity: 0.88,
+        reflectivity: 0.85,
+        clearcoat: 0.7,
+        clearcoatRoughness: 0.15
+      });
+      const outerMesh = new THREE.Mesh(outerGeo, outerMat);
+      outerMesh.castShadow = true;
+      outerMesh.receiveShadow = true;
+      group.add(outerMesh);
+
+      // 3. Inner Glowing High-Energy Quantum Core Rod
+      const coreW = Math.max(0.14, width * 0.38);
+      const coreD = Math.max(0.14, depth * 0.38);
+      const coreH = Math.max(0.4, height * 0.9);
+      const coreGeo = new THREE.BoxGeometry(coreW, coreH, coreD);
+      coreGeo.translate(0, height / 2 + baseH, 0);
+      const coreMat = new THREE.MeshStandardMaterial({
+        color: themeColor,
+        emissive: themeColor,
+        emissiveIntensity: 1.45,
+        roughness: 0.15,
+        metalness: 0.4
+      });
+      const coreMesh = new THREE.Mesh(coreGeo, coreMat);
+      group.add(coreMesh);
+
+      // 4. Multi-Facet Laser Chamfer Wireframe
+      const wireGeo = new THREE.EdgesGeometry(outerGeo);
+      const wireMat = new THREE.LineBasicMaterial({
+        color: themeColor,
+        linewidth: 2,
+        transparent: true,
+        opacity: 0.95
+      });
+      const wire = new THREE.LineSegments(wireGeo, wireMat);
+      group.add(wire);
+
+      // 5. Metallic Protective Top Cap with Emitter Node
+      const capH = 0.15;
+      const capGeo = new THREE.BoxGeometry(width * 1.05, capH, depth * 1.05);
+      capGeo.translate(0, height + baseH + capH / 2, 0);
+      const capMesh = new THREE.Mesh(capGeo, baseMat);
+      capMesh.castShadow = true;
+      group.add(capMesh);
+
+      const emitterJewelGeo = new THREE.SphereGeometry(Math.min(width * 0.22, 0.18), 12, 12);
+      emitterJewelGeo.translate(0, height + baseH + capH + 0.05, 0);
+      const emitterJewelMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+      const emitterJewel = new THREE.Mesh(emitterJewelGeo, emitterJewelMat);
+      group.add(emitterJewel);
+
+      // 6. Ground Energy Emitter Ring (Floor Projection)
+      const padGeo = new THREE.RingGeometry(width * 0.35, width * 0.95, 24);
+      const padMat = new THREE.MeshBasicMaterial({
+        color: themeColor,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.55
+      });
+      const basePad = new THREE.Mesh(padGeo, padMat);
+      basePad.rotation.x = Math.PI / 2;
+      basePad.position.y = 0.02;
+      group.add(basePad);
+
+      // 7. Beveled Holographic 3D Floating Badge
+      const canvasBadge = document.createElement('canvas');
+      canvasBadge.width = 180;
+      canvasBadge.height = 180;
+      const ctx = canvasBadge.getContext('2d');
+
+      // Card Gradient Background
+      const cardGrad = ctx.createLinearGradient(0, 0, 180, 180);
+      cardGrad.addColorStop(0, 'rgba(15, 23, 42, 0.95)');
+      cardGrad.addColorStop(1, 'rgba(3, 7, 18, 0.98)');
+      ctx.fillStyle = cardGrad;
+      ctx.beginPath();
+      ctx.roundRect(12, 12, 156, 156, 28);
+      ctx.fill();
+
+      // Border Glow
+      const hexColorStr = '#' + new THREE.Color(themeColor).getHexString();
+      ctx.lineWidth = 7;
+      ctx.strokeStyle = hexColorStr;
+      ctx.stroke();
+
+      // Subtle Outer Rim Shine
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+      ctx.stroke();
+
+      // Number Value Typography
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '900 68px "Outfit", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.shadowColor = hexColorStr;
+      ctx.shadowBlur = 16;
+      ctx.fillText(value.toString(), 90, 90);
+
+      const texture = new THREE.CanvasTexture(canvasBadge);
+      const spriteMat = new THREE.SpriteMaterial({ map: texture, depthTest: false });
+      const sprite = new THREE.Sprite(spriteMat);
+      sprite.position.set(0, height + baseH + capH + 1.15, 0);
+      const spriteScale = Math.max(1.15, Math.min(1.9, width * 1.95));
+      sprite.scale.set(spriteScale, spriteScale, 1);
+      group.add(sprite);
+
+      // UserData caching with identical variable contracts
+      group.userData = {
+        value: value,
+        height: height + baseH + capH,
+        baseCoreHeight: height,
+        width: width,
+        depth: depth,
+        baseColor: themeColor,
+        normalizedVal: normalizedVal,
+        outerMesh: outerMesh,
+        coreMesh: coreMesh,
+        basePad: basePad,
+        wire: wire,
+        sprite: sprite,
+        emitterJewel: emitterJewel
+      };
+
+      return group;
+    }
+
+    function setPillarColor(mesh, hexColor, emissiveIntensity = 0.4) {
+      if (!mesh || !mesh.userData) return;
+      const targetColor = new THREE.Color(hexColor);
+
+      if (mesh.userData.outerMesh && mesh.userData.outerMesh.material) {
+        mesh.userData.outerMesh.material.color.copy(targetColor);
+      }
+      if (mesh.userData.coreMesh && mesh.userData.coreMesh.material) {
+        mesh.userData.coreMesh.material.color.copy(targetColor);
+        mesh.userData.coreMesh.material.emissive.copy(targetColor);
+        mesh.userData.coreMesh.material.emissiveIntensity = emissiveIntensity * 2.4;
+      }
+      if (mesh.userData.wire && mesh.userData.wire.material) {
+        mesh.userData.wire.material.color.copy(targetColor);
+      }
+      if (mesh.userData.basePad && mesh.userData.basePad.material) {
+        mesh.userData.basePad.material.color.copy(targetColor);
+      }
+      if (mesh.userData.emitterJewel && mesh.userData.emitterJewel.material) {
+        mesh.userData.emitterJewel.material.color.copy(targetColor);
+      }
+    }
+
+    function resetPillarToDefaultColor(mesh) {
+      if (!mesh || !mesh.userData) return;
+      const baseCol = mesh.userData.baseColor || 0x06b6d4;
+      setPillarColor(mesh, baseCol, 0.3);
+    }
+
+    function adjustCameraFraming(count) {
+      const aspect = window.innerWidth / window.innerHeight;
+      let camDistance = 22 + (count * 0.9);
+      let camY = 8.5 + (count * 0.15);
+
+      if (aspect < 1.0) {
+        // Vertical phone screen: step back proportionally
+        camDistance = camDistance * (1.1 / aspect);
+        camY = camY * 1.25;
+      }
+
+      camera.position.set(0, camY, camDistance);
+      camera.lookAt(0, 2.2, 0);
+      controls.target.set(0, 2.2, 0);
+    }
+
+    function compileMergeSortSteps() {
+      sortSteps = [];
+      totalComparisons = 0;
+      totalMoves = 0;
+      currentStepIndex = 0;
+
+      const arrCopy = [...currentArray];
+      generateInPlaceMergeSortSteps(arrCopy, 0, arrCopy.length - 1);
+    }
+
+    function generateInPlaceMergeSortSteps(arr, left, right) {
+      if (left >= right) return;
+
+      const mid = Math.floor(left + (right - left) / 2);
+
+      sortSteps.push({
+        type: 'split',
+        left: left,
+        mid: mid,
+        right: right,
+        codeLine: 'code-line-2',
+        dialogue: `Dividing array segment [${left}..${right}] at mid-point ${mid}.`
+      });
+
+      generateInPlaceMergeSortSteps(arr, left, mid);
+      generateInPlaceMergeSortSteps(arr, mid + 1, right);
+
+      inPlaceMergeSteps(arr, left, mid, right);
+    }
+
+    function inPlaceMergeSteps(arr, start, mid, end) {
+      let i = start;
+      let j = mid + 1;
+
+      while (i <= mid && j <= end) {
+        sortSteps.push({
+          type: 'compare',
+          idxA: i,
+          idxB: j,
+          valA: arr[i],
+          valB: arr[j],
+          codeLine: 'code-line-6',
+          dialogue: `Comparing element ${arr[i]} at [${i}] with element ${arr[j]} at [${j}].`
+        });
+
+        if (arr[i] <= arr[j]) {
+          i++;
+        } else {
+          // Element arr[j] is smaller -> shoot webs and shift it into position i
+          const valToMove = arr[j];
+          sortSteps.push({
+            type: 'inPlaceShift',
+            fromIdx: j,
+            toIdx: i,
+            val: valToMove,
+            codeLine: 'code-line-7',
+            dialogue: `THWIP! Target value ${valToMove} pulled in-line to index ${i}!`
+          });
+
+          // Perform in-place rotation on memory copy
+          for (let k = j; k > i; k--) {
+            arr[k] = arr[k - 1];
+          }
+          arr[i] = valToMove;
+
+          i++;
+          mid++;
+          j++;
+        }
+      }
+
+      sortSteps.push({
+        type: 'mergeComplete',
+        start: start,
+        end: end,
+        codeLine: 'code-line-8',
+        dialogue: `Subarray [${start}..${end}] merged and secured!`
+      });
+    }
+
+    function executeNextStep() {
+      if (currentStepIndex >= sortSteps.length) {
+        onSortComplete();
+        return;
+      }
+
+      const step = sortSteps[currentStepIndex];
+      highlightCodeLine(step.codeLine);
+      setSpideyDialogue(step.dialogue);
+
+      const count = arrayPillars.length;
+      const screenW = window.innerWidth;
+      const usableStageWidth = Math.min(30, Math.max(16, (screenW < 768 ? 20 : 28)));
+      const spacing = usableStageWidth / count;
+      const startX = -((count - 1) * spacing) / 2;
+
+      // Spidey Shooter Endpoints
+      const leftWrist = getSpideyShooterPos(true);
+      const rightWrist = getSpideyShooterPos(false);
+
+      switch (step.type) {
+        case 'split':
+          setCodeStatusBadge("DIVIDE", "bg-sky-950 text-sky-400 border border-sky-600/40");
+          clearWebLines();
+          resetSpideyPose();
+          scheduleNextStep(sortSpeedMs * 0.4);
+          break;
+
+        case 'compare':
+          totalComparisons++;
+          audio.comparePing(step.valA, step.valB);
+          setCodeStatusBadge("COMPARING", "bg-amber-950 text-amber-400 border border-amber-600/40");
+
+          const pA = arrayPillars[step.idxA];
+          const pB = arrayPillars[step.idxB];
+
+          if (pA && pB) {
+            setPillarColor(pA.mesh, 0xf59e0b, 0.8);
+            setPillarColor(pB.mesh, 0xf59e0b, 0.8);
+
+            aimSpideyArm(true, pA.mesh.position);
+            aimSpideyArm(false, pB.mesh.position);
+
+            const posA = pA.mesh.position.clone().setY(pA.mesh.userData.height + 0.4);
+            const posB = pB.mesh.position.clone().setY(pB.mesh.userData.height + 0.4);
+
+            shootWebString(leftWrist, posA);
+            shootWebString(rightWrist, posB);
+            audio.thwip();
+          }
+
+          scheduleNextStep(sortSpeedMs * 0.85);
+          break;
+
+        case 'inPlaceShift':
+          totalMoves++;
+          audio.thwip();
+          audio.webPull();
+          setCodeStatusBadge("WEB-PULL", "bg-purple-950 text-purple-400 border border-purple-600/40");
+
+          const movingPillar = arrayPillars[step.fromIdx];
+          const targetSlotX = startX + step.toIdx * spacing;
+
+          // Re-order pillars array in memory
+          arrayPillars.splice(step.fromIdx, 1);
+          arrayPillars.splice(step.toIdx, 0, movingPillar);
+
+          setPillarColor(movingPillar.mesh, 0xa855f7, 0.95);
+
+          // Animate Dual-Web Persistent Leap
+          animateDualWebExchange(movingPillar.mesh, targetSlotX, leftWrist, rightWrist, () => {
+            scheduleNextStep(sortSpeedMs * 0.3);
+          });
+
+          // Slide intervening pillars to make room
+          for (let k = step.toIdx + 1; k <= step.fromIdx; k++) {
+            const shiftedSlotX = startX + k * spacing;
+            animatePillarSlide(arrayPillars[k].mesh, shiftedSlotX);
+          }
+          return; // The callback in animateDualWebExchange schedules next step
+
+        case 'mergeComplete':
+          audio.comparePing(120, 240);
+          setCodeStatusBadge("READY", "bg-emerald-950 text-emerald-400 border border-emerald-600/40");
+          for (let k = step.start; k <= step.end; k++) {
+            if (arrayPillars[k]) {
+              setPillarColor(arrayPillars[k].mesh, 0x10b981, 0.6);
+            }
+          }
+          clearWebLines();
+          resetSpideyPose();
+          scheduleNextStep(sortSpeedMs * 0.5);
+          break;
+      }
+
+      currentStepIndex++;
+      updateTelemetryUI();
+    }
+
+    function scheduleNextStep(delay) {
+      if (isSorting) {
+        animationTimer = setTimeout(() => {
+          executeNextStep();
+        }, delay);
+      }
+    }
+
+    function getSpideyShooterPos(isLeft = true) {
+      if (!spiderman) return new THREE.Vector3(0, 5, -6);
+      const wrist = isLeft ? spiderman.leftShooter : spiderman.rightShooter;
+      if (wrist) {
+        const v = new THREE.Vector3();
+        wrist.getWorldPosition(v);
+        return v;
+      }
+      return new THREE.Vector3(isLeft ? -0.8 : 0.8, 5.2, -6.2);
+    }
+
+    function shootWebString(startVec, endVec) {
+      // Build a sleek white web line with anchor knots
+      const points = [];
+      const steps = 14;
+      for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const pt = new THREE.Vector3().lerpVectors(startVec, endVec, t);
+        // Subtle catenary curve sag
+        pt.y -= Math.sin(t * Math.PI) * 0.22;
+        points.push(pt);
+      }
+
+      const curve = new THREE.CatmullRomCurve3(points);
+      const tubeGeo = new THREE.TubeGeometry(curve, 16, 0.045, 6, false);
+      const tubeMat = new THREE.MeshBasicMaterial({
+        color: 0xffffff,
+        transparent: true,
+        opacity: 0.95
+      });
+      const webMesh = new THREE.Mesh(tubeGeo, tubeMat);
+      scene.add(webMesh);
+      activeWebMeshes.push(webMesh);
+
+      // White Anchor Spheres
+      const knotGeo = new THREE.SphereGeometry(0.08, 8, 8);
+      const knotMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+      const k1 = new THREE.Mesh(knotGeo, knotMat);
+      k1.position.copy(startVec);
+      const k2 = new THREE.Mesh(knotGeo, knotMat);
+      k2.position.copy(endVec);
+      scene.add(k1);
+      scene.add(k2);
+      activeWebMeshes.push(k1, k2);
+    }
+
+    function clearWebLines() {
+      activeWebMeshes.forEach(mesh => {
+        if (mesh.geometry) mesh.geometry.dispose();
+        if (mesh.material) mesh.material.dispose();
+        scene.remove(mesh);
+      });
+      activeWebMeshes = [];
+    }
+
+    function animatePillarSlide(mesh, targetX) {
+      const startX = mesh.position.x;
+      const duration = Math.max(180, sortSpeedMs * 0.7);
+      const startTime = performance.now();
+
+      function updateSlide() {
+        const now = performance.now();
+        const progress = Math.min((now - startTime) / duration, 1.0);
+        const ease = 1 - Math.pow(1 - progress, 3);
+
+        mesh.position.x = THREE.MathUtils.lerp(startX, targetX, ease);
+        mesh.position.y = 0;
+        mesh.position.z = SORT_LINE_Z;
+
+        if (progress < 1.0) {
+          requestAnimationFrame(updateSlide);
+        } else {
+          mesh.position.set(targetX, 0, SORT_LINE_Z);
+          resetPillarToDefaultColor(mesh);
+        }
+      }
+      requestAnimationFrame(updateSlide);
+    }
+
+    function animateDualWebExchange(mesh, targetX, leftShooterPos, rightShooterPos, onDoneCallback) {
+      clearWebLines();
+      const startX = mesh.position.x;
+      const duration = Math.max(300, sortSpeedMs * 0.95);
+      const startTime = performance.now();
+      const peakHeight = Math.max(1.8, Math.abs(targetX - startX) * 0.28);
+
+      // Temporary Web Meshes
+      let tempLeftWeb = null;
+      let tempRightWeb = null;
+
+      function updateArc() {
+        const now = performance.now();
+        const progress = Math.min((now - startTime) / duration, 1.0);
+        const ease = 1 - Math.pow(1 - progress, 2);
+
+        // Compute parabolic flight along Z=0
+        const curX = THREE.MathUtils.lerp(startX, targetX, ease);
+        const curY = Math.sin(progress * Math.PI) * peakHeight;
+        mesh.position.set(curX, curY, SORT_LINE_Z);
+
+        // Pillar attachment points for webs
+        const pillarTop = mesh.position.clone().setY(curY + mesh.userData.height);
+        const leftAnchor = pillarTop.clone().add(new THREE.Vector3(-mesh.userData.width * 0.35, 0, 0));
+        const rightAnchor = pillarTop.clone().add(new THREE.Vector3(mesh.userData.width * 0.35, 0, 0));
+
+        // Rebuild both dynamic webs on this frame
+        if (tempLeftWeb) scene.remove(tempLeftWeb);
+        if (tempRightWeb) scene.remove(tempRightWeb);
+
+        tempLeftWeb = buildDynamicWebTube(leftShooterPos, leftAnchor);
+        tempRightWeb = buildDynamicWebTube(rightShooterPos, rightAnchor);
+        scene.add(tempLeftWeb);
+        scene.add(tempRightWeb);
+
+        if (progress < 1.0) {
+          requestAnimationFrame(updateArc);
+        } else {
+          // Landing
+          mesh.position.set(targetX, 0, SORT_LINE_Z);
+          scene.remove(tempLeftWeb);
+          scene.remove(tempRightWeb);
+          createLandingRipple(new THREE.Vector3(targetX, 0.05, SORT_LINE_Z));
+          resetPillarToDefaultColor(mesh);
+          resetSpideyPose();
+
+          currentStepIndex++;
+          updateTelemetryUI();
+          if (onDoneCallback) onDoneCallback();
+        }
+      }
+
+      requestAnimationFrame(updateArc);
+    }
+
+    function buildDynamicWebTube(fromPt, toPt) {
+      const points = [];
+      const segments = 12;
+      for (let i = 0; i <= segments; i++) {
+        const t = i / segments;
+        const pt = new THREE.Vector3().lerpVectors(fromPt, toPt, t);
+        // Tension oscillation sag
+        pt.y -= Math.sin(t * Math.PI) * 0.18;
+        points.push(pt);
+      }
+      const curve = new THREE.CatmullRomCurve3(points);
+      const geo = new THREE.TubeGeometry(curve, 14, 0.048, 6, false);
+      const mat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+      return new THREE.Mesh(geo, mat);
+    }
+
+    function createLandingRipple(position) {
+      const ringGeo = new THREE.RingGeometry(0.2, 0.5, 20);
+      const ringMat = new THREE.MeshBasicMaterial({
+        color: 0x38bdf8,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.8
+      });
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      ring.rotation.x = Math.PI / 2;
+      ring.position.copy(position);
+      scene.add(ring);
+
+      const startTime = performance.now();
+      function expand() {
+        const elapsed = (performance.now() - startTime) / 320;
+        if (elapsed < 1.0) {
+          ring.scale.setScalar(1 + elapsed * 2.8);
+          ring.material.opacity = 0.8 * (1 - elapsed);
+          requestAnimationFrame(expand);
+        } else {
+          scene.remove(ring);
+          ring.geometry.dispose();
+          ring.material.dispose();
+        }
+      }
+      expand();
+    }
+
+    function aimSpideyArm(isLeft, targetVec) {
+      if (!spiderman) return;
+      const armGroup = isLeft ? spiderman.leftArm : spiderman.rightArm;
+      if (armGroup) {
+        armGroup.rotation.x = -0.9;
+        armGroup.rotation.y = isLeft ? 0.35 : -0.35;
+      }
+      if (spiderman.head) {
+        spiderman.head.lookAt(targetVec.x, targetVec.y + 2, targetVec.z);
+      }
+    }
+
+    function resetSpideyPose() {
+      if (!spiderman) return;
+      if (spiderman.leftArm) {
+        spiderman.leftArm.rotation.set(0, 0, 0);
+      }
+      if (spiderman.rightArm) {
+        spiderman.rightArm.rotation.set(0, 0, 0);
+      }
+      if (spiderman.head) {
+        spiderman.head.rotation.set(0, 0, 0);
+      }
+    }
+
+    function highlightCodeLine(lineId) {
+      document.querySelectorAll('#code-lines > div').forEach(div => {
+        div.classList.remove('code-active');
+      });
+      if (lineId) {
+        const el = document.getElementById(lineId);
+        if (el) el.classList.add('code-active');
+      }
+    }
+
+    function setCodeStatusBadge(text, classNames) {
+      const badge = document.getElementById('code-status-badge');
+      if (badge) {
+        badge.innerText = text;
+        badge.className = `px-1.5 py-0.5 rounded text-[10px] font-bold ${classNames}`;
+      }
+    }
+
+    function setSpideyDialogue(msg) {
+      const el = document.getElementById('spidey-dialogue');
+      if (el) el.innerText = `"${msg}"`;
+    }
+
+    function updateTelemetryUI() {
+      document.getElementById('stat-comparisons').innerText = totalComparisons;
+      document.getElementById('stat-moves').innerText = totalMoves;
+    }
+
+    function startSorting() {
+      if (isSorting) return;
+      isSorting = true;
+      document.getElementById('btn-sort').disabled = true;
+      document.getElementById('btn-pause').disabled = false;
+      document.getElementById('btn-step').disabled = true;
+      document.getElementById('stat-status').innerText = "Sorting...";
+      document.getElementById('stat-indicator').className = "w-2 h-2 rounded-full bg-amber-400 animate-ping";
+      executeNextStep();
+    }
+
+    function pauseSorting() {
+      isSorting = false;
+      clearTimeout(animationTimer);
+      document.getElementById('btn-sort').disabled = false;
+      document.getElementById('btn-pause').disabled = true;
+      document.getElementById('btn-step').disabled = false;
+      document.getElementById('stat-status').innerText = "Paused";
+      document.getElementById('stat-indicator').className = "w-2 h-2 rounded-full bg-gray-400";
+    }
+
+    function onSortComplete() {
+      pauseSorting();
+      clearWebLines();
+      resetSpideyPose();
+      audio.victory();
+
+      // Green celebratory flash
+      arrayPillars.forEach(p => setPillarColor(p.mesh, 0x10b981, 0.8));
+
+      document.getElementById('stat-status').innerText = "Secured & Sorted!";
+      document.getElementById('stat-indicator').className = "w-2 h-2 rounded-full bg-emerald-400";
+      setCodeStatusBadge("COMPLETE", "bg-emerald-900 text-emerald-300 border border-emerald-500");
+      highlightCodeLine('code-line-8');
+      setSpideyDialogue("Excelsior! Array fully organized in O(N log N) time! Zero overlaps!");
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      initScene();
+
+      // Sort / Pause / Step Controls
+      document.getElementById('btn-sort').addEventListener('click', () => {
+        audio.init();
+        startSorting();
+      });
+
+      document.getElementById('btn-pause').addEventListener('click', () => {
+        pauseSorting();
+      });
+
+      document.getElementById('btn-step').addEventListener('click', () => {
+        audio.init();
+        pauseSorting();
+        executeNextStep();
+      });
+
+      document.getElementById('btn-reset').addEventListener('click', () => {
+        pauseSorting();
+        resetArrayElements();
+        setSpideyDialogue("Reset complete! Ready whenever you are.");
+      });
+
+      document.getElementById('btn-shuffle').addEventListener('click', () => {
+        pauseSorting();
+        // Fisher-Yates shuffle
+        for (let i = currentArray.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [currentArray[i], currentArray[j]] = [currentArray[j], currentArray[i]];
+        }
+        resetArrayElements();
+        setSpideyDialogue("Shuffled up! Let's weave some order into this array.");
+      });
+
+      // Size Slider
+      const sizeSlider = document.getElementById('slider-size');
+      sizeSlider.addEventListener('input', (e) => {
+        const val = parseInt(e.target.value);
+        document.getElementById('size-val').innerText = val;
+        pauseSorting();
+        // Generate new random array of chosen size
+        currentArray = Array.from({ length: val }, () => Math.floor(Math.random() * 85) + 10);
+        resetArrayElements();
+      });
+
+      // Speed Slider
+      const speedSlider = document.getElementById('slider-speed');
+      speedSlider.addEventListener('input', (e) => {
+        const val = parseInt(e.target.value);
+        const speeds = [900, 600, 380, 220, 100];
+        sortSpeedMs = speeds[val - 1];
+        document.getElementById('speed-val').innerText = `${val}x`;
+      });
+
+      // Suit Switcher
+      document.getElementById('suit-selector').addEventListener('change', (e) => {
+        createSpiderManCharacter(e.target.value);
+      });
+
+      // Code Tracer Toggle
+      document.getElementById('btn-toggle-code').addEventListener('click', () => {
+        const panel = document.getElementById('code-panel');
+        panel.classList.toggle('hidden');
+      });
+
+      // Audio Toggle
+      document.getElementById('btn-toggle-audio').addEventListener('click', () => {
+        audio.enabled = !audio.enabled;
+        const icon = document.getElementById('audio-icon');
+        if (audio.enabled) {
+          icon.className = "fa-solid fa-volume-high text-amber-400";
+        } else {
+          icon.className = "fa-solid fa-volume-xmark text-gray-500";
+        }
+      });
+
+      // Reset Camera
+      document.getElementById('btn-reset-cam').addEventListener('click', () => {
+        adjustCameraFraming(arrayPillars.length);
+      });
+
+      // Custom Array Modal
+      const modal = document.getElementById('custom-modal');
+      document.getElementById('btn-custom-array').addEventListener('click', () => {
+        modal.classList.remove('hidden');
+      });
+
+      document.getElementById('btn-close-modal').addEventListener('click', () => {
+        modal.classList.add('hidden');
+      });
+
+      document.getElementById('btn-cancel-modal').addEventListener('click', () => {
+        modal.classList.add('hidden');
+      });
+
+      document.getElementById('btn-apply-modal').addEventListener('click', () => {
+        const valStr = document.getElementById('custom-input-field').value;
+        const parsed = valStr.split(',')
+          .map(s => parseInt(s.trim()))
+          .filter(n => !isNaN(n) && n > 0);
+
+        if (parsed.length >= 4 && parsed.length <= 20) {
+          pauseSorting();
+          currentArray = parsed;
+          document.getElementById('slider-size').value = parsed.length;
+          document.getElementById('size-val').innerText = parsed.length;
+          resetArrayElements();
+          modal.classList.add('hidden');
+        } else {
+          setSpideyDialogue("Please provide between 4 and 20 valid positive numbers!");
+        }
+      });
+
+      // Preset Buttons
+      document.querySelectorAll('.preset-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const vals = e.target.getAttribute('data-vals');
+          document.getElementById('custom-input-field').value = vals;
+        });
+      });
+    });
+
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      adjustCameraFraming(arrayPillars.length);
+    }
+
+    function animateLoop() {
+      requestAnimationFrame(animateLoop);
+
+      // Subtle Spidey idle breathing
+      if (spiderman && spiderman.position) {
+        const time = performance.now() * 0.002;
+        spiderman.position.y = SPIDEY_POS.y + Math.sin(time) * 0.04;
+      }
+
+      // Drift background star particles
+      if (backgroundParticles) {
+        backgroundParticles.rotation.y += 0.0004;
+      }
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+  </script>
+</body>
+</html>
